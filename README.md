@@ -79,21 +79,22 @@ Incoming Suspicious Email
 
 ---
 
-## 📸 Screenshots
-
-> _Add screenshots here after capturing from the live app_
 
 📸 Screenshots
 Main interface — email loaded, no flags checked
+
 <img width="1877" height="907" alt="Screenshot 2026-06-03 114428" src="https://github.com/user-attachments/assets/cef446bb-90ab-4157-b1ce-ea438e7c617e" />
 
 Malicious verdict — 4+ flags checked
+
 <img width="1885" height="909" alt="Screenshot 2026-06-03 114454" src="https://github.com/user-attachments/assets/22b41988-e8ad-4896-b417-b3dcabb7ead1" />
 
 CEO Wire Transfer email analysis
+
 <img width="1874" height="904" alt="Screenshot 2026-06-03 114513" src="https://github.com/user-attachments/assets/687309c0-5a24-4abe-8dc4-5a93992129e4" />
 
 Why Unsafe explanation panel
+
 <img width="904" height="170" alt="Screenshot 2026-06-03 114539" src="https://github.com/user-attachments/assets/c3f1889a-1de3-408a-8b5e-9cedf8be4fe8" />
 
 
