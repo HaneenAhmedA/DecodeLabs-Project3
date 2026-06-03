@@ -1,7 +1,7 @@
 # 🎣 PhishTriage — Phishing Awareness Analyzer
 ### DecodeLabs Industrial Training Kit | Cyber Security Project 3 | Batch 2026
-[![Live Demo](https://img.shields.io/badge/Live_Demo-Visit-00ff88?style=for-the-badge)](https://haneenAhmedA.github.io/DecodeLabs-Project3/phishing-triage.html)
----
+
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Visit-00ff88?style=for-the-badge)](https://HaneenAhmedA.github.io/DecodeLabs-Project3/phishing-triage.html)---
 
 ## 📌 Project Overview
 
