@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhishTriage — Phishing Awareness Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111318;
+    --border: #1e2330;
+    --accent: #00ff88;
+    --accent2: #ff4d6d;
+    --accent3: #ffd166;
+    --text: #e8eaf0;
+    --muted: #5a6070;
+    --safe: #00ff88;
+    --suspicious: #ffd166;
+    --malicious: #ff4d6d;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    padding: 32px 0 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    background: rgba(0,255,136,0.1);
+    border: 1px solid rgba(0,255,136,0.3);
+    color: var(--accent);
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  .subtitle {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* Layout */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+    padding: 28px 0;
+    align-items: start;
+  }
+
+  /* Email selector */
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .email-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .email-tab {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+
+  .email-tab:hover { border-color: var(--accent); color: var(--text); }
+  .email-tab.active { background: rgba(0,255,136,0.1); border-color: var(--accent); color: var(--accent); }
+
+  /* Email viewer */
+  .email-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    transition: border-color 0.3s;
+  }
+
+  .email-header-bar {
+    background: #0d0f14;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .email-field {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+
+  .email-field:last-child { margin-bottom: 0; }
+
+  .field-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 60px;
+    padding-top: 1px;
+  }
+
+  .field-value { color: var(--text); line-height: 1.4; }
+  .field-value.suspicious-val { color: var(--accent2); }
+  .field-value.highlight { background: rgba(255,77,109,0.15); border-radius: 3px; padding: 1px 4px; }
+
+  .email-body {
+    padding: 20px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: #c8cad4;
+  }
+
+  .email-body .suspicious-link {
+    color: var(--accent2);
+    text-decoration: underline;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    cursor: default;
+  }
+
+  .email-body .keyword {
+    background: rgba(255,209,102,0.15);
+    color: var(--accent3);
+    border-radius: 3px;
+    padding: 1px 4px;
+  }
+
+  .email-body .attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 8px 14px;
+    background: rgba(255,77,109,0.1);
+    border: 1px solid rgba(255,77,109,0.3);
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--accent2);
+  }
+
+  /* Checklist */
+  .checklist-section { margin-bottom: 24px; }
+
+  .checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .check-item:hover { border-color: #2a3040; }
+
+  .check-item.checked {
+    background: rgba(255,77,109,0.07);
+    border-color: rgba(255,77,109,0.4);
+  }
+
+  .checkbox {
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    font-size: 11px;
+  }
+
+  .check-item.checked .checkbox {
+    background: var(--accent2);
+    border-color: var(--accent2);
+    color: white;
+  }
+
+  .check-text {
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text);
+  }
+
+  .check-text small {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* Right panel */
+  .right-panel { position: sticky; top: 24px; }
+
+  .verdict-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: border-color 0.3s;
+  }
+
+  .verdict-card.safe { border-color: var(--safe); }
+  .verdict-card.suspicious { border-color: var(--suspicious); }
+  .verdict-card.malicious { border-color: var(--malicious); }
+
+  .verdict-score {
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1;
+    margin: 12px 0 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    transition: color 0.3s;
+  }
+
+  .verdict-score.safe { color: var(--safe); }
+  .verdict-score.suspicious { color: var(--suspicious); }
+  .verdict-score.malicious { color: var(--malicious); }
+
+  .verdict-label {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    transition: color 0.3s;
+  }
+
+  .verdict-label.safe { color: var(--safe); }
+  .verdict-label.suspicious { color: var(--suspicious); }
+  .verdict-label.malicious { color: var(--malicious); }
+
+  .verdict-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+
+  .verdict-action {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 10px 16px;
+    border-radius: 5px;
+    text-align: center;
+    font-weight: 600;
+    transition: all 0.3s;
+  }
+
+  .verdict-action.safe { background: rgba(0,255,136,0.1); color: var(--safe); border: 1px solid rgba(0,255,136,0.3); }
+  .verdict-action.suspicious { background: rgba(255,209,102,0.1); color: var(--suspicious); border: 1px solid rgba(255,209,102,0.3); }
+  .verdict-action.malicious { background: rgba(255,77,109,0.1); color: var(--malicious); border: 1px solid rgba(255,77,109,0.3); }
+
+  /* Progress bar */
+  .progress-bar-wrap {
+    background: var(--border);
+    border-radius: 4px;
+    height: 5px;
+    margin: 14px 0 6px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s, background 0.3s;
+  }
+
+  /* Analysis panel */
+  .analysis-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .analysis-item {
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .analysis-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+  .analysis-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 6px;
+  }
+
+  .tag-link { background: rgba(255,77,109,0.15); color: var(--accent2); }
+  .tag-keyword { background: rgba(255,209,102,0.15); color: var(--accent3); }
+  .tag-sender { background: rgba(100,100,255,0.15); color: #8888ff; }
+  .tag-social { background: rgba(0,255,136,0.1); color: var(--accent); }
+
+  .analysis-text {
+    font-size: 12px;
+    color: #9aa0b0;
+    line-height: 1.5;
+  }
+
+  .why-unsafe {
+    margin-top: 16px;
+    padding: 14px;
+    background: rgba(255,77,109,0.06);
+    border: 1px solid rgba(255,77,109,0.2);
+    border-radius: 6px;
+    font-size: 12px;
+    color: #c8cad4;
+    line-height: 1.6;
+    display: none;
+  }
+
+  .why-unsafe.visible { display: block; }
+
+  .why-unsafe strong { color: var(--accent2); }
+
+  /* Reset button */
+  .reset-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Decision tree */
+  .tree-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+  }
+
+  .tree {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 2;
+  }
+
+  .tree-node {
+    padding: 5px 10px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 2px;
+    font-size: 11px;
+  }
+
+  .tree-root { background: rgba(255,255,255,0.05); color: var(--text); }
+  .tree-safe { background: rgba(0,255,136,0.1); color: var(--safe); }
+  .tree-susp { background: rgba(255,209,102,0.1); color: var(--suspicious); }
+  .tree-mal { background: rgba(255,77,109,0.1); color: var(--malicious); }
+
+  .tree-line { color: var(--border); }
+
+  .tree-active { outline: 1px solid currentColor; }
+
+  @media (max-width: 768px) {
+    .main { grid-template-columns: 1fr; }
+    .right-panel { position: static; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div class="logo">Phish<span>Triage</span></div>
+      <div class="badge">PROJECT 3 — DECODELABS 2026</div>
+      <div class="subtitle">PHISHING AWARENESS ANALYZER</div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="main">
+
+    <!-- LEFT: Email + Checklist -->
+    <div class="left-panel">
+      <div class="section-label">Select Sample Email</div>
+      <div class="email-tabs" id="emailTabs"></div>
+
+      <div class="email-card" id="emailCard">
+        <div class="email-header-bar" id="emailHeader"></div>
+        <div class="email-body" id="emailBody"></div>
+      </div>
+
+      <div class="checklist-section">
+        <div class="section-label">Red Flag Checklist</div>
+        <div class="checklist" id="checklist"></div>
+      </div>
+
+      <div class="why-unsafe" id="whyUnsafe"></div>
+    </div>
+
+    <!-- RIGHT: Verdict + Analysis -->
+    <div class="right-panel">
+      <div class="verdict-card" id="verdictCard">
+        <div class="section-label">Threat Score</div>
+        <div class="verdict-score" id="verdictScore">0</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="progressBar" style="width:0%;background:var(--safe)"></div>
+        </div>
+        <div class="verdict-label" id="verdictLabel">SAFE</div>
+        <div class="verdict-desc" id="verdictDesc">No red flags detected yet. Start checking indicators.</div>
+        <div class="verdict-action safe" id="verdictAction">→ CLOSE EMAIL</div>
+        <button class="reset-btn" onclick="resetChecks()">↺ Reset Checklist</button>
+      </div>
+
+      <div class="analysis-card" id="analysisCard">
+        <div class="section-label">Email Analysis</div>
+        <div id="analysisContent"></div>
+      </div>
+
+      <div class="tree-card">
+        <div class="section-label">Decision Tree</div>
+        <div class="tree">
+          <div style="margin-bottom:4px"><span class="tree-node tree-root">Incoming Email</span></div>
+          <div style="padding-left:16px; color:var(--border)">├─ <span class="tree-node tree-safe" id="tree-safe">0 flags → SAFE</span></div>
+          <div style="padding-left:16px; margin:2px 0; color:var(--border)">├─ <span class="tree-node tree-susp" id="tree-susp">1–3 flags → SUSPICIOUS</span></div>
+          <div style="padding-left:16px; color:var(--border)">└─ <span class="tree-node tree-mal" id="tree-mal">4+ flags → MALICIOUS</span></div>
+          <div style="margin-top:12px; border-top:1px solid var(--border); padding-top:10px; line-height:1.8">
+            <span style="color:var(--safe)">SAFE</span> → Close<br>
+            <span style="color:var(--suspicious)">SUSPICIOUS</span> → Warn User<br>
+            <span style="color:var(--malicious)">MALICIOUS</span> → Block & Escalate
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const emails = [
+  {
+    id: 0,
+    tab: "IT Password Reset",
+    type: "Spear Phishing",
+    from_display: "IT Security",
+    from_email: "it-security@micros0ft-support.com",
+    to: "employee@company.com",
+    subject: "⚠️ MANDATORY: Your Password Expires in 24 Hours",
+    body: `<p>Dear Employee,</p>
+<p>Our system has detected that your corporate password will <span class="keyword">EXPIRE IN 24 HOURS</span>. Failure to update will result in <span class="keyword">immediate account lockout</span>.</p>
+<p>Click the link below <span class="keyword">immediately</span> to verify your identity and reset your password:</p>
+<p><a class="suspicious-link">http://company-secure-login.micros0ft-support.com/reset?token=a7f3k</a></p>
+<p>This is a <span class="keyword">time-sensitive</span> security measure. Do not share this link.</p>
+<p>Best,<br>IT Security Team</p>`,
+    analysis: [
+      { tag: "tag-sender", label: "SENDER", text: "Display name says 'IT Security' but domain is micros0ft-support.com — typosquatting with zero replacing 'o'." },
+      { tag: "tag-link", label: "SUSPICIOUS LINK", text: "URL uses subdomain trick: true root domain is micros0ft-support.com, not company domain. Combosquatting with 'secure-login'." },
+      { tag: "tag-keyword", label: "KEYWORDS", text: "EXPIRE IN 24 HOURS, immediately, time-sensitive — all urgency triggers designed to bypass rational thinking." },
+      { tag: "tag-social", label: "PSYCHOLOGY", text: "Urgency + Fear: artificial deadline triggers fight-or-flight response, reducing careful verification." }
+    ],
+    why: "<strong>Why this is unsafe:</strong> This email uses urgency (24-hour deadline) to pressure the victim into clicking a typosquatted link that impersonates Microsoft's domain by replacing 'o' with '0'. The true domain is an attacker-controlled server that will harvest the user's credentials. A real IT team would never send a password reset via email with a direct link.",
+    flags: [0, 1, 4, 6, 8]
+  },
+  {
+    id: 1,
+    tab: "CEO Wire Transfer",
+    type: "Whaling / BEC",
+    from_display: "CEO — STRICTLY CONFIDENTIAL",
+    from_email: "ceo.urgent@executive-update.com",
+    to: "finance@company.com",
+    subject: "IMMEDIATE ACTION REQUIRED: Transfer Authorization",
+    body: `<p><span class="keyword">URGENT:</span> Process the attached wire transfer instruction <span class="keyword">immediately</span>.</p>
+<p>This is critical and must remain <span class="keyword">STRICTLY CONFIDENTIAL</span>.</p>
+<p><span class="keyword">Do not discuss with anyone.</span></p>
+<p><span class="keyword">Bypass standard procedure.</span></p>
+<p>I am traveling and cannot be reached by phone. Complete this before close of business today.</p>
+<p>Thank you,<br>CEO</p>
+<div class="attachment">📎 wire_transfer_instructions.pdf</div>`,
+    analysis: [
+      { tag: "tag-sender", label: "SENDER", text: "CEO's real domain would be @company.com — this comes from executive-update.com, a spoofed external domain." },
+      { tag: "tag-keyword", label: "KEYWORDS", text: "STRICTLY CONFIDENTIAL, Do not discuss with anyone, Bypass standard procedure — isolation tactics to prevent verification." },
+      { tag: "tag-link", label: "ATTACHMENT", text: "wire_transfer_instructions.pdf from an unverified sender is a classic BEC vector — could contain HTML smuggling or malicious macros." },
+      { tag: "tag-social", label: "PSYCHOLOGY", text: "Authority (CEO) + Urgency (close of business) + Isolation (don't discuss) — the full trifecta of BEC manipulation." }
+    ],
+    why: "<strong>Why this is unsafe:</strong> This is a Business Email Compromise (BEC) / Whaling attack. The attacker impersonates the CEO from an external domain. The secrecy demand ('Do not discuss') and procedure bypass instruction are designed to prevent the target from verifying through normal channels. Legitimate executives never instruct employees to bypass financial controls.",
+    flags: [0, 3, 4, 5, 7, 9]
+  },
+  {
+    id: 2,
+    tab: "PayPal Account Alert",
+    type: "Mass Phishing",
+    from_display: "PayPal Support",
+    from_email: "noreply@paypal-secure-alerts.net",
+    to: "user@gmail.com",
+    subject: "Your account has been limited — Verify Now",
+    body: `<p>Dear Valued Customer,</p>
+<p>We have noticed <span class="keyword">unusual activity</span> on your PayPal account. Your account has been <span class="keyword">temporarily limited</span> until you verify your information.</p>
+<p>To restore full access, please verify your account within <span class="keyword">48 hours</span> or your account will be <span class="keyword">permanently closed</span>.</p>
+<p><a class="suspicious-link">https://www.paypal.com.account-verify.net/login</a></p>
+<p>For security purposes, do not reply to this email.</p>
+<p>PayPal Security Team</p>`,
+    analysis: [
+      { tag: "tag-sender", label: "SENDER", text: "paypal-secure-alerts.net is not PayPal. Real PayPal emails come from @paypal.com only. This is combosquatting." },
+      { tag: "tag-link", label: "SUSPICIOUS LINK", text: "The URL looks like PayPal (www.paypal.com...) but reading right-to-left, the true root domain is account-verify.net — a subdomain trap." },
+      { tag: "tag-keyword", label: "KEYWORDS", text: "unusual activity, temporarily limited, 48 hours, permanently closed — escalating fear language to override rational thought." },
+      { tag: "tag-social", label: "PSYCHOLOGY", text: "Fear/Greed: threat of permanent account closure is designed to create panic and immediate action without verification." }
+    ],
+    why: "<strong>Why this is unsafe:</strong> Classic mass phishing impersonating PayPal. The subdomain trap in the URL is sophisticated — the victim sees 'paypal.com' at the start but the actual domain is account-verify.net. The 48-hour threat creates urgency that discourages verification. Real PayPal never asks you to verify via email link; always navigate directly.",
+    flags: [0, 1, 4, 5, 6]
+  },
+  {
+    id: 3,
+    tab: "ChatGPT Payment",
+    type: "SaaS Impersonation",
+    from_display: "OpenAI Billing",
+    from_email: "billing@openai-payment-update.com",
+    to: "user@company.com",
+    subject: "Urgent: ChatGPT Payment Failure — Action Required",
+    body: `<p>Your ChatGPT Plus subscription payment has <span class="keyword">failed</span>.</p>
+<p>Your access will be <span class="keyword">suspended in 24 hours</span> unless you update your billing information.</p>
+<p>Please update your payment method to avoid service interruption:</p>
+<p><a class="suspicious-link">https://openai-payment-update.com/billing/update?ref=73bx</a></p>
+<p>By continuing to use ChatGPT, not shown below, our Privacy Policy.</p>
+<p>OpenAI Team</p>`,
+    analysis: [
+      { tag: "tag-sender", label: "SENDER", text: "openai-payment-update.com is not OpenAI. Real billing emails come from @openai.com. This is a lookalike domain." },
+      { tag: "tag-link", label: "SUSPICIOUS LINK", text: "Link goes directly to the attacker's domain with a tracking parameter (?ref=73bx) to identify which victim clicked." },
+      { tag: "tag-keyword", label: "KEYWORDS", text: "failed, suspended in 24 hours, avoid service interruption — finance-related urgency targeting SaaS users." },
+      { tag: "tag-social", label: "PSYCHOLOGY", text: "Finance urgency + familiar brand trust: exploits the user's reliance on ChatGPT and fear of losing access to a paid service." }
+    ],
+    why: "<strong>Why this is unsafe:</strong> SaaS impersonation phishing targeting ChatGPT users. The broken grammar at the bottom ('not shown below, our Privacy Policy') is a red flag — legitimate companies proofread billing emails. The fake domain harvests credit card details. Always navigate to openai.com directly to check billing status.",
+    flags: [0, 1, 4, 5, 6]
+  },
+  {
+    id: 4,
+    tab: "HR Benefits Form",
+    type: "Internal Impersonation",
+    from_display: "Human Resources",
+    from_email: "hr-team@company-hr-portal.com",
+    to: "all-staff@company.com",
+    subject: "Action Required: 2026 Healthcare Benefits Questionnaire",
+    body: `<p>Dear Team,</p>
+<p>As part of the annual benefits renewal, all employees must complete the <span class="keyword">mandatory</span> 2026 Healthcare Benefits Questionnaire by <span class="keyword">Friday EOD</span>.</p>
+<p>Failure to complete may result in <span class="keyword">loss of healthcare coverage</span> for the upcoming year.</p>
+<p>Please log in using your <span class="keyword">SSO credentials</span> here:</p>
+<p><a class="suspicious-link">https://company-hr-portal.com/benefits/2026?verify=true</a></p>
+<p>This is a confidential HR matter. Please do not forward this email.</p>
+<p>HR Department</p>`,
+    analysis: [
+      { tag: "tag-sender", label: "SENDER", text: "company-hr-portal.com is an external domain impersonating internal HR. Real HR emails come from the company's own domain." },
+      { tag: "tag-link", label: "SUSPICIOUS LINK", text: "The portal URL is external (company-hr-portal.com) — a credential harvesting page that will steal SSO login details." },
+      { tag: "tag-keyword", label: "KEYWORDS", text: "mandatory, Friday EOD, loss of healthcare coverage — high-stakes threat targeting employee wellbeing." },
+      { tag: "tag-social", label: "PSYCHOLOGY", text: "Authority (HR) + Fear (loss of benefits) + Deadline: targets the employee's personal security to trigger compliance without verification." }
+    ],
+    why: "<strong>Why this is unsafe:</strong> Internal HR impersonation designed to harvest SSO (Single Sign-On) credentials. Once the attacker has SSO credentials, they can access all company systems. The threat of losing healthcare is emotionally powerful. Real HR portals are always on the company's internal domain, not an external site.",
+    flags: [0, 1, 4, 5, 6, 7]
+  }
+];
+
+const redFlags = [
+  { label: "Sender-Domain Mismatch", desc: "Display name doesn't match actual email domain" },
+  { label: "Suspicious / Lookalike URL", desc: "Typosquatting, subdomain trap, or combosquatting detected" },
+  { label: "Fake Forwarded Chain (FW:)", desc: "Pasted headers or conversations the user wasn't part of" },
+  { label: "Secrecy / Bypass Instructions", desc: "Demands for confidentiality or to bypass normal procedures" },
+  { label: "Artificial Urgency", desc: "Time pressure language: 'immediately', 'expires in X hours'" },
+  { label: "Sensitive Info Request", desc: "Asks for credentials, MFA codes, or payment details" },
+  { label: "Threat of Negative Consequence", desc: "Account closure, legal action, loss of service" },
+  { label: "Authority Impersonation", desc: "CEO, IT, HR, or government agency impersonation" },
+  { label: "Dangerous Attachment", desc: "Uncommon extension (.iso, .js, .scr) or suspicious filename" },
+  { label: "No Phone Verification Option", desc: "Cannot be reached / verifying through alternate channel blocked" },
+  { label: "Grammar / Formatting Errors", desc: "Broken sentences, odd phrasing, mismatched legal text" },
+];
+
+let currentEmail = 0;
+let checkedFlags = new Set();
+
+function init() {
+  // Build tabs
+  const tabs = document.getElementById('emailTabs');
+  emails.forEach((e, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'email-tab' + (i === 0 ? ' active' : '');
+    btn.textContent = e.tab;
+    btn.onclick = () => loadEmail(i);
+    tabs.appendChild(btn);
+  });
+
+  // Build checklist
+  const cl = document.getElementById('checklist');
+  redFlags.forEach((f, i) => {
+    const item = document.createElement('div');
+    item.className = 'check-item';
+    item.id = `flag-${i}`;
+    item.innerHTML = `
+      <div class="checkbox" id="cb-${i}"></div>
+      <div class="check-text">${f.label}<small>${f.desc}</small></div>
+    `;
+    item.onclick = () => toggleFlag(i);
+    cl.appendChild(item);
+  });
+
+  loadEmail(0);
+}
+
+function loadEmail(idx) {
+  currentEmail = idx;
+  checkedFlags.clear();
+
+  // Update tabs
+  document.querySelectorAll('.email-tab').forEach((t, i) => {
+    t.classList.toggle('active', i === idx);
+  });
+
+  const e = emails[idx];
+
+  // Email header
+  document.getElementById('emailHeader').innerHTML = `
+    <div class="email-field">
+      <span class="field-label">FROM</span>
+      <span class="field-value">${e.from_display} <span class="suspicious-val">&lt;${e.from_email}&gt;</span></span>
+    </div>
+    <div class="email-field">
+      <span class="field-label">TO</span>
+      <span class="field-value">${e.to}</span>
+    </div>
+    <div class="email-field">
+      <span class="field-label">SUBJECT</span>
+      <span class="field-value highlight">${e.subject}</span>
+    </div>
+    <div class="email-field">
+      <span class="field-label">TYPE</span>
+      <span class="field-value" style="color:var(--accent3);font-size:12px;font-family:'IBM Plex Mono',monospace">${e.type}</span>
+    </div>
+  `;
+
+  document.getElementById('emailBody').innerHTML = e.body;
+
+  // Analysis
+  document.getElementById('analysisContent').innerHTML = e.analysis.map(a => `
+    <div class="analysis-item">
+      <span class="analysis-tag ${a.tag}">${a.label}</span>
+      <div class="analysis-text">${a.text}</div>
+    </div>
+  `).join('');
+
+  // Reset checklist visuals
+  document.querySelectorAll('.check-item').forEach((el, i) => {
+    el.classList.remove('checked');
+    document.getElementById(`cb-${i}`).textContent = '';
+  });
+
+  document.getElementById('whyUnsafe').classList.remove('visible');
+  updateVerdict();
+}
+
+function toggleFlag(i) {
+  if (checkedFlags.has(i)) {
+    checkedFlags.delete(i);
+    document.getElementById(`flag-${i}`).classList.remove('checked');
+    document.getElementById(`cb-${i}`).textContent = '';
+  } else {
+    checkedFlags.add(i);
+    document.getElementById(`flag-${i}`).classList.add('checked');
+    document.getElementById(`cb-${i}`).textContent = '✓';
+  }
+  updateVerdict();
+}
+
+function updateVerdict() {
+  const count = checkedFlags.size;
+  const score = Math.min(count, 11);
+  const pct = (score / 11) * 100;
+
+  document.getElementById('verdictScore').textContent = count;
+
+  let level, color, desc, action;
+  if (count === 0) {
+    level = 'safe'; color = 'var(--safe)';
+    desc = 'No red flags detected yet. Start checking indicators above.';
+    action = '→ CLOSE EMAIL';
+  } else if (count <= 3) {
+    level = 'suspicious'; color = 'var(--suspicious)';
+    desc = `${count} red flag${count>1?'s':''} detected. Treat with caution and verify through an alternate channel.`;
+    action = '→ WARN USER';
+  } else {
+    level = 'malicious'; color = 'var(--malicious)';
+    desc = `${count} red flags detected. High confidence this is a phishing attempt.`;
+    action = '→ BLOCK & ESCALATE';
+  }
+
+  const scoreEl = document.getElementById('verdictScore');
+  const labelEl = document.getElementById('verdictLabel');
+  const descEl = document.getElementById('verdictDesc');
+  const actionEl = document.getElementById('verdictAction');
+  const cardEl = document.getElementById('verdictCard');
+  const barEl = document.getElementById('progressBar');
+
+  scoreEl.className = `verdict-score ${level}`;
+  labelEl.className = `verdict-label ${level}`;
+  labelEl.textContent = level.toUpperCase();
+  descEl.textContent = desc;
+  actionEl.className = `verdict-action ${level}`;
+  actionEl.textContent = action;
+  cardEl.className = `verdict-card ${level}`;
+  barEl.style.width = pct + '%';
+  barEl.style.background = color;
+
+  // Decision tree highlight
+  document.getElementById('tree-safe').classList.toggle('tree-active', level === 'safe');
+  document.getElementById('tree-susp').classList.toggle('tree-active', level === 'suspicious');
+  document.getElementById('tree-mal').classList.toggle('tree-active', level === 'malicious');
+
+  // Show why unsafe if 3+ flags
+  const why = document.getElementById('whyUnsafe');
+  if (count >= 3) {
+    why.innerHTML = emails[currentEmail].why;
+    why.classList.add('visible');
+  } else {
+    why.classList.remove('visible');
+  }
+}
+
+function resetChecks() {
+  loadEmail(currentEmail);
+}
+
+init();
+</script>
+</body>
+</html>
