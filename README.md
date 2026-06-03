@@ -119,6 +119,10 @@ git clone https://github.com/HaneenAhmedA/DecodeLabs-Project3.git
 
 ---
 
+## 👩‍💻 Author
+**Haneen Ahmed** — Cairo University, Cybersecurity Track
+
+---
 ## 📄 License
 
 This project was built as part of the DecodeLabs Industrial Training Program. All phishing samples are fictional and created for educational purposes only.
